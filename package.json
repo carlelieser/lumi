@@ -1,0 +1,21 @@
+{
+  "name": "lumi",
+  "description": "Programmatically adjust the brightness level of connected monitors.",
+  "version": "1.0.0",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "build": "node-gyp rebuild",
+    "test": "mocha test/index.js",
+    "format": "clang-format --glob=src/**/*.{cpp,h}"
+  },
+  "dependencies": {
+    "node-addon-api": "*"
+  },
+  "devDependencies": {
+    "chai": "^4.3.7",
+    "lodash": "^4.17.21",
+    "mocha": "^10.2.0",
+    "clang-format": "^1.8.0"
+  }
+}
