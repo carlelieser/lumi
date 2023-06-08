@@ -18,7 +18,7 @@ describe("lumi", function () {
         return expect(brightness).to.be.null;
     });
     it("should set global brightness", async function () {
-        const {success} = await lumi.set(lumi.GLOBAL, 50);
+        const {success} = await lumi.set(lumi.GLOBAL, random(100));
         return expect(success).to.be.true;
     });
     it("should set brightness", async function () {
@@ -28,11 +28,11 @@ describe("lumi", function () {
 
         if (brightness === null) return expect(success).to.be.false;
 
-        const {success: ableToSetlumi} = await lumi.set(monitor.id, random(100));
+        const {success: ableToSetBrightness} = await lumi.set(monitor.id, random(100));
 
         if (brightness !== 0) await lumi.set(monitor.id, brightness);
 
-        return expect(ableToSetlumi).to.be.true;
+        return expect(ableToSetBrightness).to.be.true;
     });
     it("should set brightness with valid config", async () => {
         const monitors = lumi.monitors();
