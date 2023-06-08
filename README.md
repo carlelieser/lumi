@@ -1,7 +1,7 @@
 # Lumi
 
 <p align="center">
-<img src="https://cdn.discordapp.com/attachments/1110664108602294352/1116214073881808977/devplex_logo_illustration_design_brightness_monitor_3D_floating_1ab6c071-7b21-42d0-a30f-5bbac0dd1691.png" height="300">
+<img src="https://i.imgur.com/xextiVJ.png" height="300">
 </p>
 
 Lumi is a Node.js module that allows you to adjust the brightness of your internal or external monitors.
