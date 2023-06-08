@@ -1,16 +1,22 @@
 # Lumi
 
 <p align="center">
-<img src="https://cdn.discordapp.com/attachments/1110664108602294352/1116143123916136448/devplex_logo_illustration_design_brightness_monitor_3D_minimal__7f8c5c0c-fbe2-4a15-9442-4ffaa05ef46b.png" height="300" style="border-radius: 1rem;">
+<img src="https://cdn.discordapp.com/attachments/1110664108602294352/1116214073881808977/devplex_logo_illustration_design_brightness_monitor_3D_floating_1ab6c071-7b21-42d0-a30f-5bbac0dd1691.png" height="300">
 </p>
 
-Lumi is a flexible Node.js module that simplifies control of monitor brightness in your applications, allowing easy integration and adjustment of connected monitors' brightness levels.
+<style>
+    img {
+        border-radius: 1rem;
+    }
+</style>
+
+Lumi is a Node.js module that allows you to adjust the brightness of your internal or external monitors.
 
 ## Installation
 
-Install Lumi via npm:
+Install via npm:
 
-```bash
+```commandline
 npm install lumi-control
 ```
 
@@ -62,6 +68,7 @@ Attempts to get the brightness level of a specific monitor identified by monitor
 - monitorId: The ID of the monitor to retrieve the brightness level for.
 
 **Returns**: A Promise that resolves to a `GetBrightnessResult` object.
+
 ### `lumi.set(brightness: number)`
 
 Attempts to set the brightness level of the primary monitor.
@@ -82,7 +89,8 @@ Sets the brightness levels for different monitors.
 
 Attempts to set the brightness level of a specific monitor identified by monitorId or a global brightness level.
 
-- monitorId: The ID of the monitor to set the brightness level for. Use the GLOBAL constant to set a global brightness level.
+- monitorId: The ID of the monitor to set the brightness level for. Use the GLOBAL constant to set a global brightness
+  level.
 - brightness: The brightness level to set.
 
 **Returns**: A Promise that resolves to a `SetBrightnessResult` object.
@@ -104,10 +112,10 @@ An object that maps monitor IDs to brightness levels.
 Represents a monitor.
 
 - **id**: The unique ID of the monitor.
-- **name**: The name of the monitor. 
-- **manufacturer**: The manufacturer of the monitor. 
-- **serial**: The serial number of the monitor. 
-- **productCode**: The product code of the monitor. 
+- **name**: The name of the monitor.
+- **manufacturer**: The manufacturer of the monitor.
+- **serial**: The serial number of the monitor.
+- **productCode**: The product code of the monitor.
 - **internal**: Indicates whether the monitor is an internal display.
 
 ### `GetBrightnessResult`
