@@ -4,6 +4,7 @@
 src
 test/**/*
 build/**/*
+binding.gyp
 
 !build/Release/lumi.node
 !./index.js
