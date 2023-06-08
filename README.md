@@ -4,9 +4,7 @@
 <img src="https://cdn.discordapp.com/attachments/1110664108602294352/1116143123916136448/devplex_logo_illustration_design_brightness_monitor_3D_minimal__7f8c5c0c-fbe2-4a15-9442-4ffaa05ef46b.png" height="300" style="border-radius: 1rem;">
 </p>
 
-Lumi is a versatile Node.js module that enables seamless control of monitor brightness from your Node.js applications.
-With Lumi, effortlessly integrate brightness control into your projects and adjust the brightness level of connected
-monitors with simplicity.
+Lumi is a flexible Node.js module that simplifies control of monitor brightness in your applications, allowing easy integration and adjustment of connected monitors' brightness levels.
 
 ## Installation
 
