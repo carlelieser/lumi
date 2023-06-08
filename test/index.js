@@ -17,7 +17,7 @@ describe("lumi", function () {
         if (success) return expect(brightness).to.be.a("number");
         return expect(brightness).to.be.null;
     });
-    it("should set brightness for monitor", async function () {
+    it("should set brightness", async function () {
         const monitors = Brightness.monitors();
         const monitor = sample(monitors);
         const {success, brightness} = await Brightness.get(monitor.id);

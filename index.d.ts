@@ -1,5 +1,6 @@
 declare module 'lumi' {
-    export const ALL_MONITORS = "ALL_MONITORS";
+    export type ALL_MONITORS = "GLOBAL";
+    export const GLOBAL: ALL_MONITORS;
 
     export interface BrightnessConfiguration {
         [monitorId: string]: number;
@@ -49,12 +50,12 @@ declare module 'lumi' {
     export function set(config: BrightnessConfiguration): Promise<SetBrightnessResult>;
 
     /**
-     * Attempts to set a monitor's brightness. Use ALL_MONITORS constant as the monitorId to set a global brightness level.
+     * Attempts to set a monitor's brightness. Use GLOBAL constant as the monitorId to set a global brightness level.
      * @param monitorId
      * @param brightness
      * @returns {Promise<SetBrightnessResult>} When success is false, provides an error message.
      */
-    export function set(monitorId: string | typeof ALL_MONITORS, brightness: number): Promise<SetBrightnessResult>;
+    export function set(monitorId: string | ALL_MONITORS, brightness: number): Promise<SetBrightnessResult>;
 
     /**
      * Returns an array of monitors.
