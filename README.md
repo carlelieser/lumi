@@ -81,10 +81,9 @@ Sets the brightness levels for different monitors.
 
 ### `lumi.set(monitorId: string | ALL_MONITORS, brightness: number)`
 
-Attempts to set the brightness level of a specific monitor identified by monitorId or a global brightness level.
+Attempts to set the brightness level of a specific monitor by id or, if provided the `GLOBAL` constant, the global brightness level.
 
-- monitorId: The ID of the monitor to set the brightness level for. Use the `GLOBAL` constant to set a global brightness.
-  level.
+- monitorId: The ID of the monitor to set the brightness level for.
 - brightness: The brightness level to set.
 
 **Returns**: A Promise that resolves to a `SetBrightnessResult` object.
