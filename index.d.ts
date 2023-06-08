@@ -1,4 +1,4 @@
-declare module 'lumi' {
+declare module 'lumi-control' {
     export type ALL_MONITORS = "GLOBAL";
     export const GLOBAL: ALL_MONITORS;
 
