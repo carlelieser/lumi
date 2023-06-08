@@ -2,6 +2,6 @@ src
 tests
 .clang-format
 .idea
-build
+build/**/*
 
 !build/Release/lumi.node
