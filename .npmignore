@@ -1,5 +1,6 @@
 src
 tests
 .clang-format
+.idea
 
 !build/Release/**/*
