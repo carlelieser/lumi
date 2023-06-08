@@ -1,7 +1,7 @@
 {
   "name": "lumi-control",
   "description": "Programmatically adjust the brightness level of connected monitors.",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "main": "index.js",
   "types": "index.d.ts",
   "os": ["win32"],
