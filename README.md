@@ -1,4 +1,4 @@
-# Lumi
+# ☀️ Lumi
 
 <p align="center">
 <img src="https://i.imgur.com/xextiVJ.png" height="300">
