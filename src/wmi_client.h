@@ -118,31 +118,72 @@ public:
 		delete this;
 	}
 
-	IWbemClassObject *getBrightnessMethods(std::string instanceName) {
-		std::wstring objectPath = L"ROOT\\WMI\\WmiMonitorBrightnessMethods";
-		IEnumWbemClassObject *pEnumInstances = nullptr;
-		HRESULT hres = service->CreateInstanceEnum(_bstr_t(objectPath.c_str()), WBEM_FLAG_FORWARD_ONLY, nullptr, &pEnumInstances);
+	HRESULT execQuery(const std::string &query, IEnumWbemClassObject **enumObj) {
+		std::string escapedQuery = EscapeString(query);
+		std::wstring wideQuery(escapedQuery.begin(), escapedQuery.end());
+
+		HRESULT hres = service->ExecQuery(
+		        _bstr_t(L"WQL"),
+		        _bstr_t(wideQuery.c_str()),
+		        WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY,
+		        nullptr,
+		        enumObj);
+
 		if (FAILED(hres)) {
+			_com_error err(hres);
+			LPCTSTR errMsg = err.ErrorMessage();
+			std::cout << "Failed to execute WMI query: " << errMsg << std::endl;
+			return hres;
+		}
+
+		return S_OK;
+	}
+
+	BSTR *pathForInstance(const std::string &instanceName, const std::string className) {
+		IEnumWbemClassObject *enumObj = nullptr;
+
+		HRESULT hres = execQuery("SELECT * FROM " + className + " WHERE InstanceName='" + instanceName + "'", &enumObj);
+
+		if (FAILED(hres)) {
+			std::cout << "Failed to execute " + className + " query." << std::endl;
 			return nullptr;
 		}
-		IWbemClassObject *pBrightnessMethodsObj = nullptr;
-		ULONG returnedCount = 0;
-		while (pEnumInstances->Next(WBEM_INFINITE, 1, &pBrightnessMethodsObj, &returnedCount) == S_OK) {
-			VARIANT varInstanceName;
-			hres = pBrightnessMethodsObj->Get(L"InstanceName", 0, &varInstanceName, nullptr, nullptr);
-			if (SUCCEEDED(hres) && varInstanceName.vt == VT_BSTR) {
-				std::wstring wstrInstanceName = std::wstring(varInstanceName.bstrVal);
-				VariantClear(&varInstanceName);
-				if (wstrInstanceName == NarrowStringToWideString(instanceName)) {
-					pEnumInstances->Release();
-					return pBrightnessMethodsObj;
-				}
-			}
-			pBrightnessMethodsObj->Release();
-			pBrightnessMethodsObj = nullptr;
+
+		IWbemClassObject *pObj = nullptr;
+		ULONG numReturned = 0;
+
+		hres = enumObj->Next(WBEM_INFINITE, 1, &pObj, &numReturned);
+
+		enumObj->Release();
+
+		if (FAILED(hres) || numReturned == 0) {
+			std::cout << "Failed retrieving object." << std::endl;
+			return nullptr;
 		}
-		pEnumInstances->Release();
-		return nullptr;
+
+		VARIANT pathVariant;
+		VariantInit(&pathVariant);
+
+		hres = pObj->Get(_bstr_t(L"__PATH"),
+		                 0,
+		                 &pathVariant,
+		                 NULL,
+		                 NULL);
+
+		pObj->Release();
+
+		if (FAILED(hres)) {
+			std::cout << "Failed retrieving object path." << std::endl;
+			return nullptr;
+		}
+
+		BSTR *path = new BSTR;
+
+		*path = SysAllocString(pathVariant.bstrVal);
+
+		VariantClear(&pathVariant);
+
+		return path;
 	}
 };
 
