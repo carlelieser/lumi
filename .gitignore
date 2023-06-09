@@ -130,3 +130,7 @@ dist
 .pnp.*
 
 .idea
+.vscode
+
+build/**/*
+!build/Release/lumi.node
