@@ -1,11 +1,10 @@
 #ifndef MONITORS_H
 #define MONITORS_H
 
-#include <napi.h>
-#include <string>
-#include <vector>
+#include <highlevelmonitorconfigurationapi.h>
 #include <optional>
-#include <windows.h>
+#include <string>
+#include <napi.h>
 
 const std::string ALL_MONITORS = "GLOBAL";
 
@@ -30,11 +29,7 @@ struct MonitorBrightnessConfiguration {
 	int brightness;
 };
 
-std::vector<Monitor> GetAvailableMonitors(bool excludeLaptopMonitors = false);
-int GetMonitorBrightness(const std::string monitorId);
-BOOL SetMonitorBrightness(const std::string monitorId, const int brightness);
-BOOL SetBrightnessForMonitors(const std::vector<MonitorBrightnessConfiguration> configurations);
-BOOL SetGlobalBrightness(const int brightness);
+std::optional<PHYSICAL_MONITOR> GetPhysicalMonitorFromHMONITOR(HMONITOR hMonitor);
 Napi::Object RetrieveSetBrightnessResult(Napi::Env env, bool success, std::string message);
 Napi::Object RetrieveGetBrightnessResult(Napi::Env env, bool success, int brightness);
 

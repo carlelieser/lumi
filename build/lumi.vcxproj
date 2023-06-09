@@ -143,9 +143,6 @@
     <ClCompile Include="..\src\utils.cpp">
       <ObjectFileName>$(IntDir)\src\utils.obj</ObjectFileName>
     </ClCompile>
-    <ClCompile Include="..\src\wmi_client.cpp">
-      <ObjectFileName>$(IntDir)\src\wmi_client.obj</ObjectFileName>
-    </ClCompile>
     <ClCompile Include="..\src\monitors.cpp">
       <ObjectFileName>$(IntDir)\src\monitors.obj</ObjectFileName>
     </ClCompile>

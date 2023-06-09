@@ -1,5 +1,5 @@
 #include "utils.h"
-#include "wmi_client.h"
+#include "monitor_service.h"
 #include "workers/get_brightness.h"
 #include "workers/set_brightness.h"
 #include <napi.h>
@@ -9,6 +9,7 @@ Napi::Promise SetBrightness(const Napi::CallbackInfo &info) {
 
 	Napi::Promise::Deferred deferred = Napi::Promise::Deferred::New(env);
 	Napi::Function callback = Napi::Function::New(env, [deferred](const Napi::CallbackInfo &info) {});
+	MonitorService *service = new MonitorService();
 	SetBrightnessWorker *worker;
 
 	if (!info[0].IsUndefined() && info[1].IsUndefined()) {
@@ -37,7 +38,7 @@ Napi::Promise SetBrightness(const Napi::CallbackInfo &info) {
 				worker->Queue();
 			}
 		} else if (param.IsNumber()) {
-			std::vector<Monitor> monitors = GetAvailableMonitors();
+			std::vector<Monitor> monitors = service->GetAvailableMonitors();
 			if (monitors.size() > 0) {
 				int brightness = info[0].As<Napi::Number>().Uint32Value();
 				worker = new SetBrightnessWorker(callback, deferred, monitors[0].id, brightness);
@@ -63,10 +64,11 @@ Napi::Promise GetBrightness(const Napi::CallbackInfo &info) {
 
 	Napi::Promise::Deferred deferred = Napi::Promise::Deferred::New(env);
 	Napi::Function callback = Napi::Function::New(env, [deferred](const Napi::CallbackInfo &info) {});
+	MonitorService *service = new MonitorService();
 	GetBrightnessWorker *worker;
 
 	if (info[0].IsUndefined()) {
-		std::vector<Monitor> monitors = GetAvailableMonitors();
+		std::vector<Monitor> monitors = service->GetAvailableMonitors();
 		if (monitors.size() > 0) {
 			std::string monitorId = monitors[0].id;
 			worker = new GetBrightnessWorker(callback, deferred, monitorId);
@@ -87,8 +89,8 @@ Napi::Promise GetBrightness(const Napi::CallbackInfo &info) {
 
 Napi::Value GetMonitors(const Napi::CallbackInfo &info) {
 	Napi::Env env = info.Env();
-
-	std::vector<Monitor> monitors = GetAvailableMonitors();
+	MonitorService *service = new MonitorService();
+	std::vector<Monitor> monitors = service->GetAvailableMonitors();
 
 	Napi::Array jsArray = Napi::Array::New(env, monitors.size());
 

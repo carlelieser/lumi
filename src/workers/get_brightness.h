@@ -11,13 +11,15 @@ public:
 	GetBrightnessWorker(Napi::Function &callback, Napi::Promise::Deferred &deferred, std::string &monitorId)
 	    : Napi::AsyncWorker(callback), deferred(deferred), monitorId(monitorId), success(false), brightness(0) {}
 
-	~GetBrightnessWorker() {}
+	~GetBrightnessWorker() {
+		delete service;
+	}
 
 	void Execute() override {
-		std::vector<Monitor> monitors = GetAvailableMonitors();
+		std::vector<Monitor> monitors = service->GetAvailableMonitors();
 		for (const Monitor &monitor: monitors) {
 			if (monitor.id == monitorId) {
-				brightness = GetMonitorBrightness(monitor.id);
+				brightness = service->GetMonitorBrightness(monitor.id);
 				success = brightness != -1;
 				return;
 			}
@@ -30,6 +32,7 @@ public:
 	}
 
 private:
+	MonitorService *service = new MonitorService();
 	Napi::Promise::Deferred deferred;
 	std::string monitorId;
 	bool success;

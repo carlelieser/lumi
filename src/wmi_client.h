@@ -57,12 +57,6 @@ private:
 		createService();
 	}
 
-	void destroy() {
-		destroyService();
-		destroyLocator();
-		CoUninitialize();
-	}
-
 public:
 	IWbemServices *service = nullptr;
 	IWbemLocator *locator = nullptr;
@@ -72,7 +66,9 @@ public:
 	}
 
 	~WmiClient() {
-		destroy();
+		destroyLocator();
+		destroyService();
+		CoUninitialize();
 	}
 
 	HRESULT execQuery(const std::string &query, IEnumWbemClassObject **enumObj) {
@@ -94,6 +90,32 @@ public:
 		}
 
 		return S_OK;
+	}
+
+	HRESULT getMethod(const std::string name, IWbemClassObject **pClass) {
+		HRESULT result = service->GetObject(_bstr_t(name.c_str()), 0, NULL, pClass, NULL);
+
+		if (FAILED(result)) {
+			std::cout << "Failed to get " + name + " class." << std::endl;
+		}
+
+		return result;
+	}
+
+	HRESULT execMethod(const std::wstring path, const std::string method, IWbemClassObject *instance) {
+		HRESULT result = service->ExecMethod(_bstr_t(path.c_str()),
+		                                     _bstr_t(method.c_str()),
+		                                     0,
+		                                     NULL,
+		                                     instance,
+		                                     NULL,
+		                                     NULL);
+
+		if (FAILED(result)) {
+			std::cout << "Failed to execute " + method << std::endl;
+		}
+
+		return result;
 	}
 
 	BSTR *pathForInstance(const std::string &instanceName, const std::string className) {
@@ -143,7 +165,5 @@ public:
 		return path;
 	}
 };
-
-extern WmiClient client;
 
 #endif// WMI_CLIENT_H
