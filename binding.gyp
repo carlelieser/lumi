@@ -26,6 +26,7 @@
       "sources": [
         "./src/index.cpp",
         "./src/utils.cpp",
+        "./src/wmi_client.cpp",
         "./src/monitors.cpp",
       ],
       "include_dirs": [
