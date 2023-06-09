@@ -7,6 +7,7 @@
 #include <vector>
 #include <windows.h>
 
+std::string EscapeString(const std::string &input);
 std::vector<std::string> SplitString(const std::string &input, char delimiter);
 Napi::Value ToNapiString(const Napi::Env env, const std::string str);
 std::string ConvertVariantToString(VARIANT variant);

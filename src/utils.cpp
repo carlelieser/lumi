@@ -1,5 +1,38 @@
 #include "utils.h"
 
+std::string EscapeString(const std::string& input) {
+	std::string escapedString;
+
+	for (char c : input) {
+		switch (c) {
+			case '\\':
+				escapedString += "\\\\";
+				break;
+			case '\n':
+				escapedString += "\\n";
+				break;
+			case '\r':
+				escapedString += "\\r";
+				break;
+			case '\t':
+				escapedString += "\\t";
+				break;
+			case '\b':
+				escapedString += "\\b";
+				break;
+			case '\f':
+				escapedString += "\\f";
+				break;
+			default:
+				escapedString += c;
+				break;
+		}
+	}
+
+	return escapedString;
+}
+
+
 std::vector<std::string> SplitString(const std::string &input, char delimiter) {
 	std::vector<std::string> result;
 	std::istringstream iss(input);
