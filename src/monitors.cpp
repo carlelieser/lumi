@@ -6,11 +6,10 @@
 #include <optional>
 #include <physicalmonitorenumerationapi.h>
 #include <string>
+#include <sysinfoapi.h>
 #include <thread>
 #include <tuple>
 #include <vector>
-
-bool BRIGHTNESS_AVAILABLE = true;
 
 std::string DeriveDisplayIdentifier(const std::string &displayDeviceString, const int occurrence) {
 	std::vector<std::string> parts = SplitString(displayDeviceString, '#');
@@ -132,10 +131,8 @@ std::optional<MonitorRef> FindMonitorRefById(const std::string id) {
 	return std::nullopt;
 }
 
-BOOL AttemptToGetMonitorBrightness(HANDLE &monitorHandle, DWORD &minBrightness, DWORD &currentBrightness,
+BOOL AttemptToGetMonitorBrightness(const HANDLE &monitorHandle, DWORD &minBrightness, DWORD &currentBrightness,
                                    DWORD &maxBrightness, int maxRetries = 10) {
-	while (!BRIGHTNESS_AVAILABLE) {}
-	BRIGHTNESS_AVAILABLE = false;
 	BOOL success = false;
 	int tries = 0;
 
@@ -144,13 +141,10 @@ BOOL AttemptToGetMonitorBrightness(HANDLE &monitorHandle, DWORD &minBrightness, 
 		tries = tries + 1;
 	}
 
-	BRIGHTNESS_AVAILABLE = true;
 	return success;
 }
 
-BOOL AttemptToSetMonitorBrightness(HANDLE &monitorHandle, int brightness, int maxRetries = 10) {
-	while (!BRIGHTNESS_AVAILABLE) {}
-	BRIGHTNESS_AVAILABLE = false;
+BOOL AttemptToSetMonitorBrightness(const HANDLE &monitorHandle, int brightness, int maxRetries = 10) {
 	BOOL success = false;
 	int tries = 0;
 
@@ -159,7 +153,6 @@ BOOL AttemptToSetMonitorBrightness(HANDLE &monitorHandle, int brightness, int ma
 		tries = tries + 1;
 	}
 
-	BRIGHTNESS_AVAILABLE = true;
 	return success;
 }
 
@@ -167,20 +160,13 @@ bool IsMonitorInternal(const std::string &instanceName) {
 	bool internal = false;
 
 	std::thread worker([instanceName, &internal]() {
-		WmiClient *client = new WmiClient();
-		GUID connectionId = client->connect();
-
-		if (connectionId == GUID_NULL) return;
-
 		IEnumWbemClassObject *enumerator = nullptr;
-		HRESULT hres = client->execQuery("SELECT * FROM WmiMonitorConnectionParams WHERE InstanceName='" +
-		                                         instanceName + "'", &enumerator);
-
+		HRESULT hres = client.execQuery("SELECT * FROM WmiMonitorConnectionParams WHERE InstanceName='" +
+		                                        instanceName + "'",
+		                                &enumerator);
 
 		if (FAILED(hres)) {
 			std::cout << "Failed to execute WMI query. Error code = 0x" << std::hex << hres << std::endl;
-			client->service->Release();
-			client->disconnect(connectionId);
 			return;
 		}
 
@@ -196,7 +182,6 @@ bool IsMonitorInternal(const std::string &instanceName) {
 			if (SUCCEEDED(hres)) {
 				wmiObject->Release();
 				enumerator->Release();
-				client->disconnect(connectionId);
 				internal = (videoOutputTechVariant.intVal == 11);
 				VariantClear(&videoOutputTechVariant);
 				return;
@@ -207,7 +192,6 @@ bool IsMonitorInternal(const std::string &instanceName) {
 		}
 
 		enumerator->Release();
-		client->disconnect(connectionId);
 	});
 
 	worker.join();
@@ -219,18 +203,11 @@ std::vector<Monitor> GetAvailableMonitors(bool excludeLaptopMonitors) {
 	std::vector<Monitor> monitors = {};
 
 	std::thread worker([&]() {
-		WmiClient *client = new WmiClient();
-		GUID connectionId = client->connect();
 		IEnumWbemClassObject *pEnumerator = NULL;
 
-		if (connectionId == GUID_NULL) return;
+		HRESULT hres = client.execQuery("SELECT * FROM WmiMonitorID", &pEnumerator);
 
-		HRESULT hres = client->execQuery("SELECT * FROM WmiMonitorID", &pEnumerator);
-
-		if (FAILED(hres)) {
-			client->disconnect(connectionId);
-			return;
-		}
+		if (FAILED(hres)) return;
 
 		IWbemClassObject *pclsObj = NULL;
 		ULONG uReturn = 0;
@@ -240,9 +217,7 @@ std::vector<Monitor> GetAvailableMonitors(bool excludeLaptopMonitors) {
 
 			pEnumerator->Next(WBEM_INFINITE, 1, &pclsObj, &uReturn);
 
-			if (0 == uReturn) {
-				break;
-			}
+			if (0 == uReturn) break;
 
 			VARIANT instanceNameVariant;
 			VARIANT manufacturerVariant;
@@ -265,9 +240,7 @@ std::vector<Monitor> GetAvailableMonitors(bool excludeLaptopMonitors) {
 			monitorInfo.serial = ConvertVariantToString(serialVariant);
 			monitorInfo.productCode = ConvertVariantToString(productCodeVariant);
 
-			if (ref.has_value()) {
-				monitorInfo.handle = ref.value().handle;
-			}
+			if (ref.has_value()) monitorInfo.handle = ref.value().handle;
 
 			VariantClear(&instanceNameVariant);
 			VariantClear(&manufacturerVariant);
@@ -282,7 +255,6 @@ std::vector<Monitor> GetAvailableMonitors(bool excludeLaptopMonitors) {
 		}
 
 		pEnumerator->Release();
-		client->disconnect(connectionId);
 	});
 
 	worker.join();
@@ -294,18 +266,11 @@ int WMIGetMonitorBrightness(const std::string monitorId) {
 	int brightness = -1;
 
 	std::thread worker([&]() {
-		WmiClient *client = new WmiClient();
-		GUID connectionId = client->connect();
 		IEnumWbemClassObject *pEnumerator = nullptr;
 
-		if (connectionId == GUID_NULL) return;
+		HRESULT hres = client.execQuery("SELECT * FROM WmiMonitorBrightness", &pEnumerator);
 
-		HRESULT hres = client->execQuery("SELECT * FROM WmiMonitorBrightness", &pEnumerator);
-
-		if (FAILED(hres)) {
-			client->disconnect(connectionId);
-			return;
-		}
+		if (FAILED(hres)) return;
 
 		IWbemClassObject *pclsObj = nullptr;
 		ULONG uReturn = 0;
@@ -338,7 +303,6 @@ int WMIGetMonitorBrightness(const std::string monitorId) {
 
 				pclsObj->Release();
 				pEnumerator->Release();
-				client->disconnect(connectionId);
 				return;
 			}
 
@@ -347,7 +311,6 @@ int WMIGetMonitorBrightness(const std::string monitorId) {
 		}
 
 		pEnumerator->Release();
-		client->disconnect(connectionId);
 	});
 
 	worker.join();
@@ -355,22 +318,27 @@ int WMIGetMonitorBrightness(const std::string monitorId) {
 	return brightness;
 }
 
+bool InternalDisplayConnected() {
+	double size;
+	HRESULT result = GetIntegratedDisplaySize(&size);
+	return SUCCEEDED(result);
+}
+
 int GetMonitorBrightness(const std::string monitorId) {
-	std::vector<Monitor> monitors = GetAvailableMonitors();
+	std::vector<MonitorRef> monitors = GetMonitorRefs();
 
 	for (const auto monitor: monitors) {
 		if (monitor.id == monitorId) {
-			if (!monitor.handle.has_value()) break;
-
-			if (monitor.internal) return WMIGetMonitorBrightness(monitorId);
+			if (InternalDisplayConnected()) {
+				int brightness = WMIGetMonitorBrightness(monitorId);
+				if (brightness != -1) return brightness;
+			}
 
 			DWORD minBrightness = 0;
 			DWORD currentBrightness = 0;
 			DWORD maxBrightness = 0;
 
-			BOOL result = AttemptToGetMonitorBrightness((HANDLE) monitor.handle.value(), minBrightness, currentBrightness, maxBrightness);
-
-			if (result) return static_cast<int>(currentBrightness);
+			if (AttemptToGetMonitorBrightness(monitor.handle, minBrightness, currentBrightness, maxBrightness)) return static_cast<int>(currentBrightness);
 		}
 	}
 
@@ -381,28 +349,15 @@ BOOL WMISetMonitorBrightness(const std::string monitorId, const int brightness) 
 	bool success = false;
 
 	std::thread worker([&]() {
-		WmiClient *client = new WmiClient();
-		GUID connectionId = client->connect();
+		BSTR *path = client.pathForInstance(monitorId, "WmiMonitorBrightnessMethods");
 
-		if (connectionId == GUID_NULL) {
-			std::cout << "Failed to connect to WMI service." << std::endl;
-			client->disconnect();
-			return;
-		}
-
-		BSTR *path = client->pathForInstance(monitorId, "WmiMonitorBrightnessMethods");
-
-		if (path == nullptr) {
-			client->disconnect();
-			return;
-		}
+		if (path == nullptr) return;
 
 		IWbemClassObject *pClass = NULL;
-		HRESULT hres = client->service->GetObject(_bstr_t(L"WmiMonitorBrightnessMethods"), 0, NULL, &pClass, NULL);
+		HRESULT hres = client.service->GetObject(_bstr_t(L"WmiMonitorBrightnessMethods"), 0, NULL, &pClass, NULL);
 
 		if (FAILED(hres)) {
 			std::cout << "Failed to get WmiMonitorBrightnessMethods class." << std::endl;
-			client->disconnect(connectionId);
 			return;
 		}
 
@@ -411,7 +366,6 @@ BOOL WMISetMonitorBrightness(const std::string monitorId, const int brightness) 
 
 		if (FAILED(hres)) {
 			std::cout << "Failed to get WmiSetBrightness method." << std::endl;
-			client->disconnect(connectionId);
 			return;
 		}
 
@@ -420,7 +374,6 @@ BOOL WMISetMonitorBrightness(const std::string monitorId, const int brightness) 
 
 		if (FAILED(hres)) {
 			std::cout << "Failed to spawn instance." << std::endl;
-			client->disconnect(connectionId);
 			return;
 		}
 
@@ -436,7 +389,6 @@ BOOL WMISetMonitorBrightness(const std::string monitorId, const int brightness) 
 
 		if (FAILED(hres)) {
 			std::cout << "Failed to insert timeout value." << std::endl;
-			client->disconnect(connectionId);
 			return;
 		}
 
@@ -452,21 +404,19 @@ BOOL WMISetMonitorBrightness(const std::string monitorId, const int brightness) 
 
 		if (FAILED(hres)) {
 			std::cout << "Failed to add brightness value." << std::endl;
-			client->disconnect(connectionId);
 			return;
 		}
 
-		hres = client->service->ExecMethod(_bstr_t(*path),
-		                                   _bstr_t(L"WmiSetBrightness"),
-		                                   0,
-		                                   NULL,
-		                                   pClassInstance,
-		                                   NULL,
-		                                   NULL);
+		hres = client.service->ExecMethod(_bstr_t(*path),
+		                                  _bstr_t(L"WmiSetBrightness"),
+		                                  0,
+		                                  NULL,
+		                                  pClassInstance,
+		                                  NULL,
+		                                  NULL);
 
 		if (FAILED(hres)) {
 			std::cout << "Failed to execute WmiSetBrightness method." << std::endl;
-			client->disconnect(connectionId);
 			return;
 		}
 
@@ -474,8 +424,6 @@ BOOL WMISetMonitorBrightness(const std::string monitorId, const int brightness) 
 		VariantClear(&brightnessVariant);
 		pClassInstance->Release();
 		pClass->Release();
-
-		client->disconnect(connectionId);
 
 		success = true;
 	});
@@ -486,13 +434,15 @@ BOOL WMISetMonitorBrightness(const std::string monitorId, const int brightness) 
 }
 
 BOOL SetMonitorBrightness(const std::string monitorId, const int brightness) {
-	std::vector<Monitor> monitors = GetAvailableMonitors();
+	std::vector<MonitorRef> monitors = GetMonitorRefs();
 
 	for (const auto monitor: monitors) {
 		if (monitor.id == monitorId) {
-			if (!monitor.handle.has_value()) return false;
-			if (monitor.internal) return WMISetMonitorBrightness(monitorId, brightness);
-			return AttemptToSetMonitorBrightness((HANDLE) monitor.handle.value(), brightness);
+			if (InternalDisplayConnected()) {
+				bool success = WMISetMonitorBrightness(monitorId, brightness);
+				if (success) return success;
+			}
+			return AttemptToSetMonitorBrightness(monitor.handle, brightness);
 		}
 	}
 

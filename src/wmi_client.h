@@ -10,53 +10,34 @@
 #include <wbemidl.h>
 #include <windows.h>
 
-struct ConnectionAttempt {
-	GUID id;
-};
-
 class WmiClient {
 
 private:
-	std::vector<ConnectionAttempt> connectionAttempts;
-	std::thread comThread;
-
-	bool initLocator() {
-		HRESULT hres = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+	bool createLocator() {
+		HRESULT hres = CoInitializeEx(NULL, COINIT_MULTITHREADED);
 
 		if (FAILED(hres)) {
 			std::cout << "Failed to initialize COM library. Error code = 0x"
 			          << std::hex << hres << std::endl;
-			if (hres != 0x80010106) {
-				disconnect();
-				return false;
-			}
+			return false;
 		}
 
 		hres = CoCreateInstance(CLSID_WbemLocator, 0, CLSCTX_INPROC_SERVER, IID_IWbemLocator, reinterpret_cast<LPVOID *>(&locator));
 
-		if (FAILED(hres)) {
-			disconnect();
-			return false;
-		}
+		if (FAILED(hres)) return false;
 		return true;
 	}
 
-	bool initService() {
+	bool createService() {
 		if (locator == nullptr) return false;
 
 		HRESULT hres = locator->ConnectServer(_bstr_t(L"ROOT\\WMI"), NULL, NULL, 0, NULL, 0, 0, &service);
 
-		if (FAILED(hres)) {
-			disconnect();
-			return false;
-		}
+		if (FAILED(hres)) return false;
 
 		hres = CoSetProxyBlanket(service, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, NULL, RPC_C_AUTHN_LEVEL_CALL, RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE);
 
-		if (FAILED(hres)) {
-			disconnect();
-			return false;
-		}
+		if (FAILED(hres)) return false;
 
 		return true;
 	}
@@ -71,51 +52,27 @@ private:
 		service = nullptr;
 	}
 
-	bool isConnected() {
-		return connectionAttempts.size() > 0;
+	void init() {
+		createLocator();
+		createService();
 	}
 
-	void removeConnectionAttempt(const GUID &id) {
-		connectionAttempts.erase(std::remove_if(connectionAttempts.begin(), connectionAttempts.end(),
-		                                        [&](const ConnectionAttempt &attempt) { return attempt.id == id; }),
-		                         connectionAttempts.end());
-	}
-
-	GUID storeConnectionAttempt() {
-		ConnectionAttempt attempt;
-		CoCreateGuid(&(attempt.id));
-		connectionAttempts.push_back(attempt);
-		return attempt.id;
-	}
-
-	GUID initComLibrary() {
-		if (initLocator() && initService()) {
-			return storeConnectionAttempt();
-		}
-		return GUID_NULL;
+	void destroy() {
+		destroyService();
+		destroyLocator();
+		CoUninitialize();
 	}
 
 public:
 	IWbemServices *service = nullptr;
 	IWbemLocator *locator = nullptr;
 
-	GUID connect() {
-		if (isConnected()) {
-			return storeConnectionAttempt();
-		} else {
-			return initComLibrary();
-		}
+	WmiClient() {
+		init();
 	}
 
-	void disconnect(GUID connectionId = GUID_NULL) {
-		if (connectionId != GUID_NULL) {
-			removeConnectionAttempt(connectionId);
-			if (connectionAttempts.size() != 0) return;
-		}
-		destroyService();
-		destroyLocator();
-		CoUninitialize();
-		delete this;
+	~WmiClient() {
+		destroy();
 	}
 
 	HRESULT execQuery(const std::string &query, IEnumWbemClassObject **enumObj) {
@@ -186,5 +143,7 @@ public:
 		return path;
 	}
 };
+
+extern WmiClient client;
 
 #endif// WMI_CLIENT_H
