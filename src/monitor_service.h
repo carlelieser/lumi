@@ -14,7 +14,7 @@
 
 class MonitorService {
 private:
-	WmiClient *client = new WmiClient();
+	WmiClient *client;
 
 	std::string DeriveDisplayIdentifier(const std::string &displayDeviceString, const int occurrence) {
 		std::vector<std::string> parts = SplitString(displayDeviceString, '#');
@@ -419,6 +419,10 @@ public:
 		}
 
 		return true;
+	}
+
+	MonitorService(){
+		client = new WmiClient();
 	}
 
 	~MonitorService() {

@@ -1,10 +1,11 @@
 #ifndef SET_BRIGHTNESS_WORKER_H
 #define SET_BRIGHTNESS_WORKER_H
 
-#include "../monitors.h"
+#include "../monitor_service.h"
 #include "../utils.h"
 #include <iostream>
 #include <napi.h>
+#include <thread>
 
 class SetBrightnessWorker : public Napi::AsyncWorker {
 public:
@@ -15,33 +16,45 @@ public:
 public:
 	SetBrightnessWorker(Napi::Function &callback, Napi::Promise::Deferred &deferred, std::vector<MonitorBrightnessConfiguration> &configurations) : Napi::AsyncWorker(callback), deferred(deferred), success(false), configurations(configurations), message("") {}
 
-	~SetBrightnessWorker() {
-		delete service;
-	}
+	~SetBrightnessWorker() {}
 
 	void Execute() override {
-		if (configurations.size() > 0) {
-			std::vector<bool> results;
-			for (const MonitorBrightnessConfiguration config: configurations) {
-				results.emplace_back(service->SetMonitorBrightness(config.monitorId, config.brightness));
-			}
-			success = Every(results);
-		} else {
-			if (monitorId == ALL_MONITORS) {
-				success = service->SetGlobalBrightness(brightness);
-				return;
+		std::thread thread([&]() {
+			MonitorService *service = new MonitorService();
+			if (configurations.size() > 0) {
+				std::vector<bool> results;
+				for (const MonitorBrightnessConfiguration config: configurations) {
+					results.emplace_back(service->SetMonitorBrightness(config.monitorId, config.brightness));
+				}
+				success = Every(results);
 			} else {
-				std::vector<Monitor> monitors = service->GetAvailableMonitors();
-				for (const Monitor &monitor: monitors) {
-					if (monitor.id == monitorId) {
-						success = service->SetMonitorBrightness(monitor.id, brightness);
+				if (monitorId == ALL_MONITORS) {
+					success = service->SetGlobalBrightness(brightness);
+					return;
+				} else {
+					std::vector<Monitor> monitors = service->GetAvailableMonitors();
+
+					if (monitors.size() == 0) {
+						message = "No monitors available";
 						return;
 					}
+
+					if (monitorId.empty()) {
+						success = service->SetMonitorBrightness(monitors[0].id, brightness);
+					} else {
+						for (const Monitor &monitor: monitors) {
+							if (monitor.id == monitorId) {
+								success = service->SetMonitorBrightness(monitor.id, brightness);
+								return;
+							}
+						}
+						message = "Monitor not found";
+					}
 				}
-				success = false;
-				message = "Monitor not found";
 			}
-		}
+		});
+
+		thread.join();
 	}
 
 	void OnOK() override {
@@ -50,7 +63,6 @@ public:
 	}
 
 private:
-	MonitorService *service = new MonitorService();
 	Napi::Promise::Deferred deferred;
 	std::string monitorId;
 	std::string message;

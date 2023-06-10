@@ -14,7 +14,7 @@ class WmiClient {
 
 private:
 	bool createLocator() {
-		HRESULT hres = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+		HRESULT hres = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 
 		if (FAILED(hres)) {
 			std::cout << "Failed to initialize COM library. Error code = 0x"
