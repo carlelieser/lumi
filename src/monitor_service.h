@@ -342,7 +342,7 @@ public:
 
 			monitorInfo.id = id;
 			monitorInfo.internal = IsMonitorInternal(monitorInfo.id);
-			monitorInfo.name = ref.has_value() ? monitorInfo.internal ? "Internal" : ref.value().name
+			monitorInfo.name = ref.has_value() ? monitorInfo.internal ? "Built-in" : ref.value().name
 			                                   : "Unknown";
 			monitorInfo.manufacturer = ConvertVariantToString(manufacturerVariant);
 			monitorInfo.serial = ConvertVariantToString(serialVariant);
