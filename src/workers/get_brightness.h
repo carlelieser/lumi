@@ -14,22 +14,26 @@ public:
 	~GetBrightnessWorker() override {}
 
 	void Execute() override {
-		MonitorService service;
-		auto monitors = service.GetMonitorRefs();
+		std::thread thread([&]() {
+			MonitorService *service = new MonitorService();
+			auto monitors = service->GetMonitorRefs();
 
-		if (monitors.empty()) {
-			return;
-		}
+			if (monitors.empty()) {
+				return;
+			}
 
-		if (monitorId.empty()) {
-			brightness = service.GetMonitorBrightness(monitors.begin()->second);
-			return;
-		}
+			if (monitorId.empty()) {
+				brightness = service->GetMonitorBrightness(monitors.begin()->second);
+				return;
+			}
 
-		auto it = monitors.find(monitorId);
-		if (it != monitors.end()) {
-			brightness = service.GetMonitorBrightness(it->second);
-		}
+			auto it = monitors.find(monitorId);
+			if (it != monitors.end()) {
+				brightness = service->GetMonitorBrightness(it->second);
+			}
+		});
+
+		thread.join();
 	}
 
 	void OnOK() override {
@@ -55,4 +59,4 @@ private:
 	int brightness;
 };
 
-#endif // GET_BRIGHTNESS_WORKER_H
+#endif// GET_BRIGHTNESS_WORKER_H

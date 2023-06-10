@@ -59,9 +59,14 @@ Napi::Promise GetBrightness(const Napi::CallbackInfo &info) {
 
 Napi::Value GetMonitors(const Napi::CallbackInfo &info) {
 	Napi::Env env = info.Env();
+	std::vector<Monitor> monitors = {};
 
-	MonitorService *service = new MonitorService();
-	std::vector<Monitor> monitors = service->GetAvailableMonitors();
+	std::thread thread([&]() {
+		MonitorService *service = new MonitorService();
+		monitors = service->GetAvailableMonitors();
+	});
+
+	thread.join();
 
 	Napi::Array jsArray = Napi::Array::New(env, monitors.size());
 

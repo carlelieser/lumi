@@ -14,38 +14,42 @@ public:
 	~SetBrightnessWorker() override {}
 
 	void Execute() override {
-		MonitorService service;
-		auto monitors = service.GetMonitorRefs();
+		std::thread thread([&]() {
+			MonitorService *service = new MonitorService();
+			auto monitors = service->GetMonitorRefs();
 
-		if (monitors.empty()) {
-			message = "No monitors available.";
-			return;
-		}
-
-		if (!configurations.empty()) {
-			if (configurations.size() == 1) {
-				auto monitorId = configurations[0].monitorId;
-				if (monitorId == "primary") monitorId = monitors.begin()->first;
-				if (monitorId == ALL_MONITORS) {
-					success = service.SetGlobalBrightness(configurations[0].brightness);
-					return;
-				}
-
-				auto it = monitors.find(monitorId);
-				if (it != monitors.end()) {
-					success = service.SetMonitorBrightness(it->second, configurations[0].brightness);
-				}
-			} else {
-				std::vector<bool> results;
-				for (const auto& config: configurations) {
-					auto it = monitors.find(config.monitorId);
-					if (it != monitors.end()) {
-						results.emplace_back(service.SetMonitorBrightness(it->second, config.brightness));
-					}
-				}
-				success = Every(results);
+			if (monitors.empty()) {
+				message = "No monitors available.";
+				return;
 			}
-		}
+
+			if (!configurations.empty()) {
+				if (configurations.size() == 1) {
+					auto monitorId = configurations[0].monitorId;
+					if (monitorId == "primary") monitorId = monitors.begin()->first;
+					if (monitorId == ALL_MONITORS) {
+						success = service->SetGlobalBrightness(configurations[0].brightness);
+						return;
+					}
+
+					auto it = monitors.find(monitorId);
+					if (it != monitors.end()) {
+						success = service->SetMonitorBrightness(it->second, configurations[0].brightness);
+					}
+				} else {
+					std::vector<bool> results;
+					for (const auto &config: configurations) {
+						auto it = monitors.find(config.monitorId);
+						if (it != monitors.end()) {
+							results.emplace_back(service->SetMonitorBrightness(it->second, config.brightness));
+						}
+					}
+					success = Every(results);
+				}
+			}
+		});
+
+		thread.join();
 	}
 
 	void OnOK() override {
@@ -69,4 +73,4 @@ private:
 	std::string message;
 };
 
-#endif // SET_BRIGHTNESS_WORKER_H
+#endif// SET_BRIGHTNESS_WORKER_H

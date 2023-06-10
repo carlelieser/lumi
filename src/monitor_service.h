@@ -429,6 +429,7 @@ public:
 
 	~MonitorService() {
 		delete client;
+		delete this;
 	}
 };
 
