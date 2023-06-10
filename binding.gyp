@@ -26,7 +26,6 @@
       "sources": [
         "./src/index.cpp",
         "./src/utils.cpp",
-        "./src/monitors.cpp",
       ],
       "include_dirs": [
         "<!@(node -p \"require('node-addon-api').include\")"

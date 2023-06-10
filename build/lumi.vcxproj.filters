@@ -13,12 +13,6 @@
     <Filter Include="..\src">
       <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
     </Filter>
-    <Filter Include="..">
-      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="..\src">
-      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
-    </Filter>
     <Filter Include="C:">
       <UniqueIdentifier>{7B735499-E5DD-1C2B-6C26-70023832A1CF}</UniqueIdentifier>
     </Filter>
@@ -37,22 +31,22 @@
     <Filter Include="C:\Users\Carlos\AppData\Roaming\nvm">
       <UniqueIdentifier>{1B85D12A-9F9C-E0A8-F82E-74864675B527}</UniqueIdentifier>
     </Filter>
-    <Filter Include="C:\Users\Carlos\AppData\Roaming\nvm\v16.17.0">
-      <UniqueIdentifier>{3731475D-1B04-D9D3-0E98-46F72326F648}</UniqueIdentifier>
+    <Filter Include="C:\Users\Carlos\AppData\Roaming\nvm\v19.0.0">
+      <UniqueIdentifier>{F298A0E0-24CF-5A98-C614-AB0E9AFBC0AB}</UniqueIdentifier>
     </Filter>
-    <Filter Include="C:\Users\Carlos\AppData\Roaming\nvm\v16.17.0\node_modules">
+    <Filter Include="C:\Users\Carlos\AppData\Roaming\nvm\v19.0.0\node_modules">
       <UniqueIdentifier>{56DF7A98-063D-FB9D-485C-089023B4C16A}</UniqueIdentifier>
     </Filter>
-    <Filter Include="C:\Users\Carlos\AppData\Roaming\nvm\v16.17.0\node_modules\npm">
+    <Filter Include="C:\Users\Carlos\AppData\Roaming\nvm\v19.0.0\node_modules\npm">
       <UniqueIdentifier>{741E0E76-39B2-B1AB-9FA1-F1A20B16F295}</UniqueIdentifier>
     </Filter>
-    <Filter Include="C:\Users\Carlos\AppData\Roaming\nvm\v16.17.0\node_modules\npm\node_modules">
+    <Filter Include="C:\Users\Carlos\AppData\Roaming\nvm\v19.0.0\node_modules\npm\node_modules">
       <UniqueIdentifier>{56DF7A98-063D-FB9D-485C-089023B4C16A}</UniqueIdentifier>
     </Filter>
-    <Filter Include="C:\Users\Carlos\AppData\Roaming\nvm\v16.17.0\node_modules\npm\node_modules\node-gyp">
+    <Filter Include="C:\Users\Carlos\AppData\Roaming\nvm\v19.0.0\node_modules\npm\node_modules\node-gyp">
       <UniqueIdentifier>{77348C0E-2034-7791-74D5-63C077DF5A3B}</UniqueIdentifier>
     </Filter>
-    <Filter Include="C:\Users\Carlos\AppData\Roaming\nvm\v16.17.0\node_modules\npm\node_modules\node-gyp\src">
+    <Filter Include="C:\Users\Carlos\AppData\Roaming\nvm\v19.0.0\node_modules\npm\node_modules\node-gyp\src">
       <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
     </Filter>
     <Filter Include="..">
@@ -66,11 +60,8 @@
     <ClCompile Include="..\src\utils.cpp">
       <Filter>..\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\monitors.cpp">
-      <Filter>..\src</Filter>
-    </ClCompile>
-    <ClCompile Include="C:\Users\Carlos\AppData\Roaming\nvm\v16.17.0\node_modules\npm\node_modules\node-gyp\src\win_delay_load_hook.cc">
-      <Filter>C:\Users\Carlos\AppData\Roaming\nvm\v16.17.0\node_modules\npm\node_modules\node-gyp\src</Filter>
+    <ClCompile Include="C:\Users\Carlos\AppData\Roaming\nvm\v19.0.0\node_modules\npm\node_modules\node-gyp\src\win_delay_load_hook.cc">
+      <Filter>C:\Users\Carlos\AppData\Roaming\nvm\v19.0.0\node_modules\npm\node_modules\node-gyp\src</Filter>
     </ClCompile>
     <None Include="..\binding.gyp">
       <Filter>..</Filter>

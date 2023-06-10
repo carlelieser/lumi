@@ -117,6 +117,7 @@ bool Contains(const std::string &str, const std::string &substring) {
 }
 
 bool Every(const std::vector<bool> vector) {
+	if (vector.empty()) return false;
 	for (auto item: vector) {
 		if (!item) return false;
 	}

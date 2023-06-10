@@ -1,98 +1,67 @@
-#include "monitors.h"
+#include "monitor_service.h"
 #include "utils.h"
 #include "workers/get_brightness.h"
 #include "workers/set_brightness.h"
 #include <napi.h>
 
-Napi::Promise SetBrightness(const Napi::CallbackInfo& info) {
+Napi::Promise SetBrightness(const Napi::CallbackInfo &info) {
 	Napi::Env env = info.Env();
 
-	Napi::Promise::Deferred deferred = Napi::Promise::Deferred::New(env);
-	Napi::Function callback = Napi::Function::New(env, [deferred](const Napi::CallbackInfo& info) {});
-
-	std::string monitorId;
-	int brightness;
+	std::vector<MonitorBrightnessConfiguration> configList = {};
 
 	if (!info[0].IsUndefined() && info[1].IsUndefined()) {
-
 		if (info[0].IsObject()) {
-			Napi::Object configListRef = info[0].As<Napi::Object>();
-			Napi::Array monitorIdList = configListRef.GetPropertyNames();
-			std::vector<MonitorBrightnessConfiguration> configList;
-
-			if (monitorIdList.Length() == 0) {
-				deferred.Resolve(RetrieveSetBrightnessResult(env, false, "No config provided."));
-				return deferred.Promise();
-			}
-
-			for (size_t i = 0; i < monitorIdList.Length(); i++) {
-				monitorId = monitorIdList.Get(i).As<Napi::String>().Utf8Value();
-				Napi::Value brightnessRef = configListRef.Get(monitorId);
-
-				if (brightnessRef.IsNumber()) {
-					MonitorBrightnessConfiguration config;
+			Napi::Object providedConfig = info[0].As<Napi::Object>();
+			Napi::Array monitors = providedConfig.GetPropertyNames();
+			for (size_t i = 0; i < monitors.Length(); i++) {
+				std::string monitorId = monitors.Get(i).As<Napi::String>().Utf8Value();
+				Napi::Value providedBrightness = providedConfig.Get(monitorId);
+				if (providedBrightness.IsNumber()) {
+					MonitorBrightnessConfiguration config = {};
 					config.monitorId = monitorId;
-					config.brightness = brightnessRef.As<Napi::Number>().Int32Value();
+					config.brightness = providedBrightness.As<Napi::Number>().Int32Value();
 					configList.emplace_back(config);
-				} else {
-					deferred.Resolve(RetrieveSetBrightnessResult(env, false, "Invalid config. Brightness value must be a number"));
-					return deferred.Promise();
 				}
 			}
-
-			SetBrightnessWorker* worker = new SetBrightnessWorker(callback, deferred, configList);
-			worker->Queue();
 		} else if (info[0].IsNumber()) {
-			brightness = info[0].As<Napi::Number>().Uint32Value();
-			SetBrightnessWorker* worker = new SetBrightnessWorker(callback, deferred, std::string(""), brightness);
-			worker->Queue();
-		} else {
-			deferred.Resolve(RetrieveSetBrightnessResult(env, false, "Invalid config. Value must be an object"));
+			MonitorBrightnessConfiguration config = {};
+			config.monitorId = "primary";
+			config.brightness = info[0].As<Napi::Number>().Int32Value();
+			configList.emplace_back(config);
 		}
 	} else {
-		monitorId = info[0].As<Napi::String>().Utf8Value();
-		brightness = info[1].As<Napi::Number>().Uint32Value();
-		SetBrightnessWorker* worker = new SetBrightnessWorker(callback, deferred, monitorId, brightness);
-		worker->Queue();
+		MonitorBrightnessConfiguration config = {};
+		config.monitorId = info[0].As<Napi::String>().Utf8Value();
+		config.brightness = info[1].As<Napi::Number>().Uint32Value();
+		configList.emplace_back(config);
 	}
 
-	return deferred.Promise();
+	SetBrightnessWorker *worker = new SetBrightnessWorker(env, configList);
+	auto promise = worker->GetPromise();
+	worker->Queue();
+
+	return promise;
 }
 
-Napi::Promise GetBrightness(const Napi::CallbackInfo& info) {
+Napi::Promise GetBrightness(const Napi::CallbackInfo &info) {
 	Napi::Env env = info.Env();
-
-	Napi::Promise::Deferred deferred = Napi::Promise::Deferred::New(env);
-	Napi::Function callback = Napi::Function::New(env, [deferred](const Napi::CallbackInfo& info) {});
 
 	std::string monitorId = "";
 
-	if (!info[0].IsUndefined() && !info[0].IsString()) {
-		deferred.Resolve(RetrieveGetBrightnessResult(env, false, 0));
-		return deferred.Promise();
-	}
+	if (!info[0].IsUndefined()) monitorId = info[0].As<Napi::String>().Utf8Value();
 
-	if (!info[0].IsUndefined()) {
-		monitorId = info[0].As<Napi::String>().Utf8Value();
-	}
-
-	GetBrightnessWorker* worker = new GetBrightnessWorker(callback, deferred, monitorId);
+	GetBrightnessWorker *worker = new GetBrightnessWorker(env, monitorId);
+	auto promise = worker->GetPromise();
 	worker->Queue();
 
-	return deferred.Promise();
+	return promise;
 }
 
-Napi::Value GetMonitors(const Napi::CallbackInfo& info) {
+Napi::Value GetMonitors(const Napi::CallbackInfo &info) {
 	Napi::Env env = info.Env();
 
-	std::vector<Monitor> monitors;
-
-	std::thread thread([&monitors]() {
-		MonitorService* service = new MonitorService();
-		monitors = service->GetAvailableMonitors();
-	});
-
-	thread.join();
+	MonitorService *service = new MonitorService();
+	std::vector<Monitor> monitors = service->GetAvailableMonitors();
 
 	Napi::Array jsArray = Napi::Array::New(env, monitors.size());
 

@@ -3,72 +3,70 @@
 
 #include "../monitor_service.h"
 #include "../utils.h"
-#include <iostream>
 #include <napi.h>
-#include <thread>
+#include <unordered_map>
 
 class SetBrightnessWorker : public Napi::AsyncWorker {
 public:
-	SetBrightnessWorker(Napi::Function &callback, Napi::Promise::Deferred &deferred, std::string &monitorId,
-	                    int brightness)
-	    : Napi::AsyncWorker(callback), deferred(deferred), monitorId(monitorId), success(false), brightness(brightness), message("") {}
+	SetBrightnessWorker(Napi::Env &env, std::vector<MonitorBrightnessConfiguration> &configurations)
+	    : Napi::AsyncWorker(env), deferred(Napi::Promise::Deferred::New(env)), configurations(configurations), success(false), message("") {}
 
-public:
-	SetBrightnessWorker(Napi::Function &callback, Napi::Promise::Deferred &deferred, std::vector<MonitorBrightnessConfiguration> &configurations) : Napi::AsyncWorker(callback), deferred(deferred), success(false), configurations(configurations), message("") {}
-
-	~SetBrightnessWorker() {}
+	~SetBrightnessWorker() override {}
 
 	void Execute() override {
-		std::thread thread([&]() {
-			MonitorService *service = new MonitorService();
-			if (configurations.size() > 0) {
+		MonitorService service;
+		auto monitors = service.GetMonitorRefs();
+
+		if (monitors.empty()) {
+			message = "No monitors available.";
+			return;
+		}
+
+		if (!configurations.empty()) {
+			if (configurations.size() == 1) {
+				auto monitorId = configurations[0].monitorId;
+				if (monitorId == "primary") monitorId = monitors.begin()->first;
+				if (monitorId == ALL_MONITORS) {
+					success = service.SetGlobalBrightness(configurations[0].brightness);
+					return;
+				}
+
+				auto it = monitors.find(monitorId);
+				if (it != monitors.end()) {
+					success = service.SetMonitorBrightness(it->second, configurations[0].brightness);
+				}
+			} else {
 				std::vector<bool> results;
-				for (const MonitorBrightnessConfiguration config: configurations) {
-					results.emplace_back(service->SetMonitorBrightness(config.monitorId, config.brightness));
+				for (const auto& config: configurations) {
+					auto it = monitors.find(config.monitorId);
+					if (it != monitors.end()) {
+						results.emplace_back(service.SetMonitorBrightness(it->second, config.brightness));
+					}
 				}
 				success = Every(results);
-			} else {
-				if (monitorId == ALL_MONITORS) {
-					success = service->SetGlobalBrightness(brightness);
-					return;
-				} else {
-					std::vector<Monitor> monitors = service->GetAvailableMonitors();
-
-					if (monitors.size() == 0) {
-						message = "No monitors available";
-						return;
-					}
-
-					if (monitorId.empty()) {
-						success = service->SetMonitorBrightness(monitors[0].id, brightness);
-					} else {
-						for (const Monitor &monitor: monitors) {
-							if (monitor.id == monitorId) {
-								success = service->SetMonitorBrightness(monitor.id, brightness);
-								return;
-							}
-						}
-						message = "Monitor not found";
-					}
-				}
 			}
-		});
-
-		thread.join();
+		}
 	}
 
 	void OnOK() override {
 		Napi::HandleScope scope(Env());
-		deferred.Resolve(RetrieveSetBrightnessResult(Env(), success, message));
+		Napi::Object result = Napi::Object::New(Env());
+
+		result.Set("success", Napi::Boolean::New(Env(), success));
+		result.Set("message", message.empty() ? Env().Null() : Napi::String::New(Env(), message));
+
+		deferred.Resolve(result);
+	}
+
+	Napi::Promise GetPromise() {
+		return deferred.Promise();
 	}
 
 private:
 	Napi::Promise::Deferred deferred;
-	std::string monitorId;
-	std::string message;
-	bool success;
-	int brightness;
 	std::vector<MonitorBrightnessConfiguration> configurations;
+	bool success;
+	std::string message;
 };
 
-#endif// SET_BRIGHTNESS_WORKER_H
+#endif // SET_BRIGHTNESS_WORKER_H

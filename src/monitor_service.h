@@ -1,16 +1,40 @@
 #ifndef MONITOR_SERVICE_H
 #define MONITOR_SERVICE_H
 
-#include "monitors.h"
 #include "wmi_client.h"
+#include <algorithm>
+#include <execution>
 #include <highlevelmonitorconfigurationapi.h>
 #include <physicalmonitorenumerationapi.h>
 #include <string>
-#include <sysinfoapi.h>
 #include <thread>
 #include <tuple>
+#include <unordered_map>
 #include <vector>
 #include <windows.h>
+
+const std::string ALL_MONITORS = "GLOBAL";
+
+struct MonitorRef {
+	std::string id;
+	std::string name;
+	HANDLE handle;
+};
+
+struct Monitor {
+	std::string id;
+	std::string name;
+	std::string manufacturer;
+	std::string serial;
+	std::string productCode;
+	HANDLE handle;
+	bool internal;
+};
+
+struct MonitorBrightnessConfiguration {
+	std::string monitorId;
+	int brightness;
+};
 
 class MonitorService {
 private:
@@ -51,70 +75,6 @@ private:
 		}
 
 		return "Unknown";
-	}
-
-	std::vector<MonitorRef> GetMonitorRefs() {
-		UINT pathCount;
-		UINT modeCount;
-		if (GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &pathCount, &modeCount))
-			return {};
-
-		std::vector<DISPLAYCONFIG_PATH_INFO> paths(pathCount);
-		std::vector<DISPLAYCONFIG_MODE_INFO> modes(modeCount);
-		if (QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &pathCount, paths.data(), &modeCount, modes.data(), nullptr))
-			return {};
-
-		std::vector<std::tuple<HANDLE, std::wstring>> handles;
-		EnumDisplayMonitors(
-		        nullptr,
-		        nullptr,
-		        [](HMONITOR hMonitor, HDC hdc, LPRECT rc, LPARAM lp) {
-			        auto handles = reinterpret_cast<std::vector<std::tuple<HANDLE, std::wstring>> *>(lp);
-			        std::optional<PHYSICAL_MONITOR> physicalMonitor = GetPhysicalMonitorFromHMONITOR(hMonitor);
-
-			        if (!physicalMonitor.has_value()) return TRUE;
-
-			        MONITORINFOEXW info = {};
-			        info.cbSize = sizeof(MONITORINFOEXW);
-			        GetMonitorInfoW(hMonitor, &info);
-			        handles->emplace_back(static_cast<HANDLE>(physicalMonitor.value().hPhysicalMonitor), std::wstring(info.szDevice));
-			        return TRUE;
-		        },
-		        reinterpret_cast<LPARAM>(&handles));
-
-		std::vector<MonitorRef> monitors;
-		std::vector<std::string> monitorIdList;
-
-		for (UINT i = 0; i < pathCount; i++) {
-			std::tuple<std::string, std::string> info = GetDeviceInfoFromPath(paths[i]);
-			std::string GDIDeviceName = GetGDIDeviceNameFromPath(paths[i]);
-
-			auto target = std::find_if(handles.begin(), handles.end(), [&GDIDeviceName](const std::tuple<HANDLE, std::wstring> &t) {
-				return (ToUTF8(std::get<1>(t)) == GDIDeviceName);
-			});
-
-			if (target != handles.end()) {
-				MonitorRef monitor;
-				int instance = CountOccurrence(monitorIdList, std::get<0>(info));
-				monitor.id = DeriveDisplayIdentifier(std::get<0>(info), instance);
-				monitor.name = std::get<1>(info);
-				monitor.handle = std::get<0>(*target);
-				monitorIdList.emplace_back(std::get<0>(info));
-				monitors.emplace_back(monitor);
-			}
-		}
-
-		return monitors;
-	}
-
-	std::optional<MonitorRef> FindMonitorRefById(const std::string id) {
-		std::vector<MonitorRef> refs = GetMonitorRefs();
-		for (const auto ref: refs) {
-			if (ref.id == id) {
-				return ref;
-			}
-		}
-		return std::nullopt;
 	}
 
 	BOOL AttemptToGetMonitorBrightness(const HANDLE &monitorHandle, DWORD &minBrightness, DWORD &currentBrightness,
@@ -231,12 +191,6 @@ private:
 		return -1;
 	}
 
-	bool InternalDisplayConnected() {
-		double size;
-		HRESULT result = GetIntegratedDisplaySize(&size);
-		return SUCCEEDED(result);
-	}
-
 	BOOL WMISetMonitorBrightness(const std::string monitorId, const int brightness) {
 		BSTR *path = client->pathForInstance(monitorId, "WmiMonitorBrightnessMethods");
 
@@ -308,8 +262,82 @@ private:
 		return true;
 	}
 
+	PHYSICAL_MONITOR GetPhysicalMonitorFromHMONITOR(HMONITOR hMonitor) {
+		PHYSICAL_MONITOR monitor = {};
+		DWORD monitorCount;
+
+		if (!GetNumberOfPhysicalMonitorsFromHMONITOR(hMonitor, &monitorCount)) return monitor;
+
+		if (monitorCount == 0) return monitor;
+
+		std::unique_ptr<PHYSICAL_MONITOR[]> monitors(new PHYSICAL_MONITOR[monitorCount]);
+
+		if (!GetPhysicalMonitorsFromHMONITOR(hMonitor, monitorCount, monitors.get())) return monitor;
+
+		return monitors[0];
+	}
+
+	std::vector<std::tuple<HANDLE, std::wstring>> handles;
+
+	static BOOL CALLBACK MonitorEnumProcStatic(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData) {
+		MonitorService* monitorService = reinterpret_cast<MonitorService*>(dwData);
+		return monitorService->callback(hMonitor, hdcMonitor, lprcMonitor);
+	}
+
+	bool callback(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor) {
+		PHYSICAL_MONITOR physicalMonitor = GetPhysicalMonitorFromHMONITOR(hMonitor);
+		MONITORINFOEXW info = {};
+		info.cbSize = sizeof(MONITORINFOEXW);
+		GetMonitorInfoW(hMonitor, &info);
+		handles.emplace_back(static_cast<HANDLE>(physicalMonitor.hPhysicalMonitor), std::wstring(info.szDevice));
+		return TRUE;
+	}
+
 public:
+	std::unordered_map<std::string, MonitorRef> GetMonitorRefs() {
+		UINT pathCount;
+		UINT modeCount;
+		if (GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &pathCount, &modeCount))
+			return {};
+
+		std::vector<DISPLAYCONFIG_PATH_INFO> paths(pathCount);
+		std::vector<DISPLAYCONFIG_MODE_INFO> modes(modeCount);
+		if (QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &pathCount, paths.data(), &modeCount, modes.data(), nullptr))
+			return {};
+
+		EnumDisplayMonitors(
+		        nullptr,
+		        nullptr,
+		        &MonitorEnumProcStatic,
+		        reinterpret_cast<LPARAM>(this));
+
+		std::unordered_map<std::string, MonitorRef> monitors;
+		std::vector<std::string> monitorIdList;
+
+		for (UINT i = 0; i < pathCount; i++) {
+			std::tuple<std::string, std::string> info = GetDeviceInfoFromPath(paths[i]);
+			std::string GDIDeviceName = GetGDIDeviceNameFromPath(paths[i]);
+
+			auto target = std::find_if(handles.begin(), handles.end(), [&GDIDeviceName](const std::tuple<HANDLE, std::wstring> &t) {
+				return (ToUTF8(std::get<1>(t)) == GDIDeviceName);
+			});
+
+			if (target != handles.end()) {
+				MonitorRef monitor;
+				int instance = CountOccurrence(monitorIdList, std::get<0>(info));
+				monitor.id = DeriveDisplayIdentifier(std::get<0>(info), instance);
+				monitor.name = std::get<1>(info);
+				monitor.handle = std::get<0>(*target);
+				monitorIdList.emplace_back(std::get<0>(info));
+				monitors[monitor.id] = monitor;
+			}
+		}
+
+		return monitors;
+	}
+
 	std::vector<Monitor> GetAvailableMonitors() {
+		std::unordered_map<std::string, MonitorRef> refs = GetMonitorRefs();
 		std::vector<Monitor> monitors;
 		IEnumWbemClassObject *pEnumerator = NULL;
 
@@ -338,17 +366,19 @@ public:
 			pclsObj->Get(L"ProductCodeID", 0, &productCodeVariant, 0, 0);
 
 			std::string id = ToUTF8(instanceNameVariant.bstrVal);
-			std::optional<MonitorRef> ref = FindMonitorRefById(id);
 
 			monitorInfo.id = id;
 			monitorInfo.internal = IsMonitorInternal(monitorInfo.id);
-			monitorInfo.name = ref.has_value() ? monitorInfo.internal ? "Built-in" : ref.value().name
-			                                   : "Unknown";
 			monitorInfo.manufacturer = ConvertVariantToString(manufacturerVariant);
 			monitorInfo.serial = ConvertVariantToString(serialVariant);
 			monitorInfo.productCode = ConvertVariantToString(productCodeVariant);
 
-			if (ref.has_value()) monitorInfo.handle = ref.value().handle;
+			auto it = refs.find(id);
+
+			if (it != refs.end()) {
+				monitorInfo.name = monitorInfo.internal ? "Built-in" : it->second.name;
+				monitorInfo.handle = it->second.handle;
+			}
 
 			VariantClear(&instanceNameVariant);
 			VariantClear(&manufacturerVariant);
@@ -364,64 +394,36 @@ public:
 		return monitors;
 	}
 
-	int GetMonitorBrightness(const std::string monitorId) {
-		std::vector<MonitorRef> monitors = GetMonitorRefs();
+	int GetMonitorBrightness(const MonitorRef ref) {
+		DWORD minBrightness = 0;
+		DWORD currentBrightness = 0;
+		DWORD maxBrightness = 0;
 
-		for (const auto monitor: monitors) {
-			if (monitor.id == monitorId) {
-				if (InternalDisplayConnected()) {
-					int brightness = WMIGetMonitorBrightness(monitorId);
-					if (brightness != -1) return brightness;
-				}
+		if (AttemptToGetMonitorBrightness(ref.handle, minBrightness, currentBrightness, maxBrightness)) return static_cast<int>(currentBrightness);
 
-				DWORD minBrightness = 0;
-				DWORD currentBrightness = 0;
-				DWORD maxBrightness = 0;
-
-				if (AttemptToGetMonitorBrightness(monitor.handle, minBrightness, currentBrightness, maxBrightness)) return static_cast<int>(currentBrightness);
-			}
-		}
-
-		return -1;
+		return WMIGetMonitorBrightness(ref.id);
 	}
 
-	BOOL SetMonitorBrightness(const std::string monitorId, const int brightness) {
-		std::vector<MonitorRef> monitors = GetMonitorRefs();
-
-		for (const auto monitor: monitors) {
-			if (monitor.id == monitorId) {
-				if (InternalDisplayConnected()) {
-					bool success = WMISetMonitorBrightness(monitorId, brightness);
-					if (success) return success;
-				}
-				return AttemptToSetMonitorBrightness(monitor.handle, brightness);
-			}
-		}
-
-		return false;
-	}
-
-	BOOL SetBrightnessViaConfig(const std::vector<MonitorBrightnessConfiguration> configurations) {
-		std::vector<bool> results;
-
-		for (auto config: configurations) {
-			results.emplace_back(SetMonitorBrightness(config.monitorId, config.brightness));
-		}
-
-		return Every(results);
+	BOOL SetMonitorBrightness(const MonitorRef monitor, const int brightness) {
+		if (AttemptToSetMonitorBrightness(monitor.handle, brightness)) return true;
+		return WMISetMonitorBrightness(monitor.id, brightness);
 	}
 
 	BOOL SetGlobalBrightness(int brightness) {
-		std::vector<Monitor> monitors = GetAvailableMonitors();
+		std::unordered_map<std::string, MonitorRef> monitors = GetMonitorRefs();
 
-		for (size_t i = 0; i < monitors.size(); ++i) {
-			SetMonitorBrightness(monitors[i].id, brightness);
-		}
+		std::for_each(
+		        std::execution::par_unseq,
+		        monitors.begin(),
+		        monitors.end(),
+		        [&](auto &&monitor) {
+			        SetMonitorBrightness(monitor.second, brightness);
+		        });
 
 		return true;
 	}
 
-	MonitorService(){
+	MonitorService() {
 		client = new WmiClient();
 	}
 
