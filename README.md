@@ -109,9 +109,11 @@ Represents a monitor.
 - **id**: The unique ID of the monitor.
 - **name**: The name of the monitor.
 - **manufacturer**: The manufacturer of the monitor.
-- **serial**: The serial number of the monitor.
+- **serialNumber**: The serial number of the monitor.
 - **productCode**: The product code of the monitor.
 - **internal**: Indicates whether the monitor is an internal display.
+- **position**: Monitor coordinates in pixels (x, y)
+- **size**: Monitor size in pixels (width, height)
 
 ### `GetBrightnessResult`
 

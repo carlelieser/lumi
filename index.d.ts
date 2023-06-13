@@ -10,9 +10,14 @@ declare module 'lumi-control' {
         id: string;
         name: string;
         manufacturer: string;
-        serial: string;
+        serialNumber: string;
         productCode: string;
         internal: boolean;
+        size: {
+            width: number;
+            height: number;
+        };
+        position: { x: number; y: number };
     }
 
     export interface GetBrightnessResult {

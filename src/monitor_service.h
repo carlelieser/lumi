@@ -15,9 +15,21 @@
 
 const std::string ALL_MONITORS = "GLOBAL";
 
+struct Size {
+	int width;
+	int height;
+};
+
+struct Position {
+	int x;
+	int y;
+};
+
 struct MonitorRef {
 	std::string id;
 	std::string name;
+	Size size;
+	Position position;
 	HANDLE handle;
 };
 
@@ -25,8 +37,10 @@ struct Monitor {
 	std::string id;
 	std::string name;
 	std::string manufacturer;
-	std::string serial;
+	std::string serialNumber;
 	std::string productCode;
+	Size size;
+	Position position;
 	HANDLE handle;
 	bool internal;
 };
@@ -277,10 +291,10 @@ private:
 		return monitors[0];
 	}
 
-	std::vector<std::tuple<HANDLE, std::wstring>> handles;
+	std::vector<std::tuple<HANDLE, std::wstring, int, int, int, int>> handles;
 
 	static BOOL CALLBACK MonitorEnumProcStatic(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData) {
-		MonitorService* monitorService = reinterpret_cast<MonitorService*>(dwData);
+		MonitorService *monitorService = reinterpret_cast<MonitorService *>(dwData);
 		return monitorService->callback(hMonitor, hdcMonitor, lprcMonitor);
 	}
 
@@ -289,7 +303,7 @@ private:
 		MONITORINFOEXW info = {};
 		info.cbSize = sizeof(MONITORINFOEXW);
 		GetMonitorInfoW(hMonitor, &info);
-		handles.emplace_back(static_cast<HANDLE>(physicalMonitor.hPhysicalMonitor), std::wstring(info.szDevice));
+		handles.emplace_back(static_cast<HANDLE>(physicalMonitor.hPhysicalMonitor), std::wstring(info.szDevice), info.rcMonitor.right - info.rcMonitor.left, info.rcMonitor.bottom - info.rcMonitor.top, info.rcMonitor.left, info.rcMonitor.top);
 		return TRUE;
 	}
 
@@ -318,7 +332,7 @@ public:
 			std::tuple<std::string, std::string> info = GetDeviceInfoFromPath(paths[i]);
 			std::string GDIDeviceName = GetGDIDeviceNameFromPath(paths[i]);
 
-			auto target = std::find_if(handles.begin(), handles.end(), [&GDIDeviceName](const std::tuple<HANDLE, std::wstring> &t) {
+			auto target = std::find_if(handles.begin(), handles.end(), [&GDIDeviceName](const std::tuple<HANDLE, std::wstring, int, int, int, int> &t) {
 				return (ToUTF8(std::get<1>(t)) == GDIDeviceName);
 			});
 
@@ -328,6 +342,10 @@ public:
 				monitor.id = DeriveDisplayIdentifier(std::get<0>(info), instance);
 				monitor.name = std::get<1>(info);
 				monitor.handle = std::get<0>(*target);
+				monitor.size.width = std::get<2>(*target);
+				monitor.size.height = std::get<3>(*target);
+				monitor.position.x = std::get<4>(*target);
+				monitor.position.y = std::get<5>(*target);
 				monitorIdList.emplace_back(std::get<0>(info));
 				monitors[monitor.id] = monitor;
 			}
@@ -370,7 +388,7 @@ public:
 			monitorInfo.id = id;
 			monitorInfo.internal = IsMonitorInternal(monitorInfo.id);
 			monitorInfo.manufacturer = ConvertVariantToString(manufacturerVariant);
-			monitorInfo.serial = ConvertVariantToString(serialVariant);
+			monitorInfo.serialNumber = ConvertVariantToString(serialVariant);
 			monitorInfo.productCode = ConvertVariantToString(productCodeVariant);
 
 			auto it = refs.find(id);
@@ -378,6 +396,10 @@ public:
 			if (it != refs.end()) {
 				monitorInfo.name = monitorInfo.internal ? "Built-in" : it->second.name;
 				monitorInfo.handle = it->second.handle;
+				monitorInfo.size.width = it->second.size.width;
+				monitorInfo.size.height = it->second.size.height;
+				monitorInfo.position.x = it->second.position.x;
+				monitorInfo.position.y = it->second.position.y;
 			}
 
 			VariantClear(&instanceNameVariant);

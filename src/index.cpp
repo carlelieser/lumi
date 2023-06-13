@@ -71,14 +71,23 @@ Napi::Value GetMonitors(const Napi::CallbackInfo &info) {
 	Napi::Array jsArray = Napi::Array::New(env, monitors.size());
 
 	for (size_t i = 0; i < monitors.size(); ++i) {
-		Napi::Object monitor = Napi::Object::New(env);
-		monitor.Set(Napi::String::New(env, "id"), monitors[i].id);
-		monitor.Set(Napi::String::New(env, "name"), ToNapiString(env, monitors[i].name));
-		monitor.Set(Napi::String::New(env, "manufacturer"), ToNapiString(env, monitors[i].manufacturer));
-		monitor.Set(Napi::String::New(env, "serial"), ToNapiString(env, monitors[i].serial));
-		monitor.Set(Napi::String::New(env, "productCode"), ToNapiString(env, monitors[i].productCode));
-		monitor.Set(Napi::String::New(env, "internal"), Napi::Boolean::New(env, monitors[i].internal));
-		jsArray.Set(i, monitor);
+		auto monitor = monitors[i];
+		Napi::Object result = Napi::Object::New(env);
+		Napi::Object size = Napi::Object::New(env);
+		Napi::Object position = Napi::Object::New(env);
+		result.Set(Napi::String::New(env, "id"), monitor.id);
+		result.Set(Napi::String::New(env, "name"), ToNapiString(env, monitor.name));
+		result.Set(Napi::String::New(env, "manufacturer"), ToNapiString(env, monitor.manufacturer));
+		result.Set(Napi::String::New(env, "serialNumber"), ToNapiString(env, monitor.serialNumber));
+		result.Set(Napi::String::New(env, "productCode"), ToNapiString(env, monitor.productCode));
+		result.Set(Napi::String::New(env, "internal"), Napi::Boolean::New(env, monitor.internal));
+		size.Set(Napi::String::New(env, "width"), Napi::Number::New(env, monitor.size.width));
+		size.Set(Napi::String::New(env, "height"), Napi::Number::New(env, monitor.size.height));
+		position.Set(Napi::String::New(env, "x"), Napi::Number::New(env, monitor.position.x));
+		position.Set(Napi::String::New(env, "y"), Napi::Number::New(env, monitor.position.y));
+		result.Set(Napi::String::New(env, "size"), size);
+		result.Set(Napi::String::New(env, "position"), position);
+		jsArray.Set(i, result);
 	}
 
 	return jsArray;
