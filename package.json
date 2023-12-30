@@ -10,13 +10,13 @@
     "format": "clang-format --glob=src/**/*.{cpp,h}"
   },
   "dependencies": {
-    "node-addon-api": "*"
+    "node-addon-api": "^7.0.0"
   },
   "devDependencies": {
     "chai": "^4.3.7",
+    "clang-format": "^1.8.0",
     "lodash": "^4.17.21",
-    "mocha": "^10.2.0",
-    "clang-format": "^1.8.0"
+    "mocha": "^10.2.0"
   },
   "os": [
     "win32"
