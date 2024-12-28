@@ -61,12 +61,8 @@ Napi::Value GetMonitors(const Napi::CallbackInfo &info) {
 	Napi::Env env = info.Env();
 	std::vector<Monitor> monitors = {};
 
-	std::thread thread([&]() {
-		MonitorService *service = new MonitorService();
-		monitors = service->GetAvailableMonitors();
-	});
-
-	thread.join();
+	MonitorService *service = new MonitorService();
+	monitors = service->GetAvailableMonitors();
 
 	Napi::Array jsArray = Napi::Array::New(env, monitors.size());
 

@@ -303,11 +303,33 @@ private:
 		MONITORINFOEXW info = {};
 		info.cbSize = sizeof(MONITORINFOEXW);
 		GetMonitorInfoW(hMonitor, &info);
-		handles.emplace_back(static_cast<HANDLE>(physicalMonitor.hPhysicalMonitor), std::wstring(info.szDevice), info.rcMonitor.right - info.rcMonitor.left, info.rcMonitor.bottom - info.rcMonitor.top, info.rcMonitor.left, info.rcMonitor.top);
+		auto [width, height, x, y] = GetMonitorInfoWithPosition(info.szDevice, hMonitor);
+		handles.emplace_back(static_cast<HANDLE>(physicalMonitor.hPhysicalMonitor), std::wstring(info.szDevice), width, height, x, y);
 		return TRUE;
 	}
 
 public:
+	std::tuple<int, int, int, int> GetMonitorInfoWithPosition(const std::wstring& deviceName, HMONITOR hMonitor) {
+		DEVMODEW devMode = {};
+		devMode.dmSize = sizeof(DEVMODEW);
+		int width = 0, height = 0;
+
+		if (EnumDisplaySettingsW(deviceName.c_str(), ENUM_CURRENT_SETTINGS, &devMode)) {
+			width = devMode.dmPelsWidth;
+			height = devMode.dmPelsHeight;
+		}
+
+		MONITORINFOEXW monitorInfo = {};
+		monitorInfo.cbSize = sizeof(MONITORINFOEXW);
+		int x = 0, y = 0;
+
+		if (GetMonitorInfoW(hMonitor, reinterpret_cast<MONITORINFO*>(&monitorInfo))) {
+			x = monitorInfo.rcMonitor.left;
+			y = monitorInfo.rcMonitor.top;
+		}
+
+		return {width, height, x, y};
+	}
 	std::unordered_map<std::string, MonitorRef> GetMonitorRefs() {
 		UINT pathCount;
 		UINT modeCount;
