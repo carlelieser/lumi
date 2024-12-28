@@ -1,10 +1,2 @@
 .clang-format
 .idea
-
-src
-test/**/*
-build/**/*
-
-!build/Release/lumi.node
-!./index.js
-!./index.d.ts
