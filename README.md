@@ -6,7 +6,7 @@
 
 [![npm version](https://badge.fury.io/js/lumi-control.svg)](https://badge.fury.io/js/lumi-control)
 
-Lumi is a Node.js module that allows you to adjust the brightness of your internal or external monitors.
+Lumi is a Node.js module that allows you to adjust the brightness of your internal and external monitors.
 
 ## Installation
 
