@@ -12,6 +12,11 @@
 #include <unordered_map>
 #include <vector>
 #include <windows.h>
+#include "hash.h"
+#include "utils.h"
+#include "display_config_helper.h"
+#include <iostream>
+#include <format>
 
 const std::string ALL_MONITORS = "GLOBAL";
 
@@ -27,6 +32,7 @@ struct Position {
 
 struct MonitorRef {
 	std::string id;
+	std::int64_t displayId;
 	std::string name;
 	Size size;
 	Position position;
@@ -35,6 +41,7 @@ struct MonitorRef {
 
 struct Monitor {
 	std::string id;
+	std::int64_t displayId;
 	std::string name;
 	std::string manufacturer;
 	std::string serialNumber;
@@ -291,7 +298,7 @@ private:
 		return monitors[0];
 	}
 
-	std::vector<std::tuple<HANDLE, std::wstring, int, int, int, int>> handles;
+	std::vector<std::tuple<HANDLE, std::wstring, int64_t, int, int, int, int>> handles;
 
 	static BOOL CALLBACK MonitorEnumProcStatic(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData) {
 		MonitorService *monitorService = reinterpret_cast<MonitorService *>(dwData);
@@ -303,13 +310,13 @@ private:
 		MONITORINFOEXW info = {};
 		info.cbSize = sizeof(MONITORINFOEXW);
 		GetMonitorInfoW(hMonitor, &info);
-		auto [width, height, x, y] = GetMonitorInfoWithPosition(info.szDevice, hMonitor);
-		handles.emplace_back(static_cast<HANDLE>(physicalMonitor.hPhysicalMonitor), std::wstring(info.szDevice), width, height, x, y);
+		auto [id, width, height, x, y] = GetMonitorInfoWithPosition(info.szDevice, hMonitor);
+		handles.emplace_back(static_cast<HANDLE>(physicalMonitor.hPhysicalMonitor), std::wstring(info.szDevice), id, width, height, x, y);
 		return TRUE;
 	}
 
 public:
-	std::tuple<int, int, int, int> GetMonitorInfoWithPosition(const std::wstring& deviceName, HMONITOR hMonitor) {
+	std::tuple<int64_t, int, int, int, int> GetMonitorInfoWithPosition(const std::wstring& deviceName, HMONITOR hMonitor) {
 		DEVMODEW devMode = {};
 		devMode.dmSize = sizeof(DEVMODEW);
 		int width = 0, height = 0;
@@ -319,17 +326,35 @@ public:
 			height = devMode.dmPelsHeight;
 		}
 
-		MONITORINFOEXW monitorInfo = {};
-		monitorInfo.cbSize = sizeof(MONITORINFOEXW);
+		MONITORINFOEX monitorInfo = {};
+		monitorInfo.cbSize = sizeof(MONITORINFOEX);
 		int x = 0, y = 0;
+		int64_t id = 0;
 
-		if (GetMonitorInfoW(hMonitor, reinterpret_cast<MONITORINFO*>(&monitorInfo))) {
+		if (GetMonitorInfo(hMonitor, reinterpret_cast<MONITORINFO*>(&monitorInfo))) {
 			x = monitorInfo.rcMonitor.left;
 			y = monitorInfo.rcMonitor.top;
+			id = DisplayIdFromMonitorInfo(static_cast<const MONITORINFOEX&>(monitorInfo));
 		}
 
-		return {width, height, x, y};
+		return {id, width, height, x, y};
 	}
+	
+std::int64_t DisplayIdFromMonitorInfo(const MONITORINFOEX& monitor) {
+  std::optional<DISPLAYCONFIG_PATH_INFO> config_path =
+      GetDisplayConfigPathInfo(static_cast<MONITORINFOEX>(monitor));
+
+  if (config_path.has_value()) {
+    return static_cast<int64_t>(PersistentHash(StringPrintf(
+        "%lu/%li/%u", config_path->targetInfo.adapterId.LowPart,
+        config_path->targetInfo.adapterId.HighPart,
+        config_path->targetInfo.id)));
+  }
+
+  return static_cast<int64_t>(PersistentHash(
+      WideToUTF8(FixedArrayToStringView(NarrowStringToWideString(monitor.szDevice).c_str()))));
+}
+
 	std::unordered_map<std::string, MonitorRef> GetMonitorRefs() {
 		UINT pathCount;
 		UINT modeCount;
@@ -354,7 +379,7 @@ public:
 			std::tuple<std::string, std::string> info = GetDeviceInfoFromPath(paths[i]);
 			std::string GDIDeviceName = GetGDIDeviceNameFromPath(paths[i]);
 
-			auto target = std::find_if(handles.begin(), handles.end(), [&GDIDeviceName](const std::tuple<HANDLE, std::wstring, int, int, int, int> &t) {
+			auto target = std::find_if(handles.begin(), handles.end(), [&GDIDeviceName](const std::tuple<HANDLE, std::wstring, int64_t, int, int, int, int> &t) {
 				return (ToUTF8(std::get<1>(t)) == GDIDeviceName);
 			});
 
@@ -362,12 +387,13 @@ public:
 				MonitorRef monitor;
 				int instance = CountOccurrence(monitorIdList, std::get<0>(info));
 				monitor.id = DeriveDisplayIdentifier(std::get<0>(info), instance);
+				monitor.displayId = std::get<2>(*target);
 				monitor.name = std::get<1>(info);
 				monitor.handle = std::get<0>(*target);
-				monitor.size.width = std::get<2>(*target);
-				monitor.size.height = std::get<3>(*target);
-				monitor.position.x = std::get<4>(*target);
-				monitor.position.y = std::get<5>(*target);
+				monitor.size.width = std::get<3>(*target);
+				monitor.size.height = std::get<4>(*target);
+				monitor.position.x = std::get<5>(*target);
+				monitor.position.y = std::get<6>(*target);
 				monitorIdList.emplace_back(std::get<0>(info));
 				monitors[monitor.id] = monitor;
 			}
@@ -417,6 +443,7 @@ public:
 
 			if (it != refs.end()) {
 				monitorInfo.name = monitorInfo.internal ? "Built-in" : it->second.name;
+				monitorInfo.displayId = it->second.displayId;
 				monitorInfo.handle = it->second.handle;
 				monitorInfo.size.width = it->second.size.width;
 				monitorInfo.size.height = it->second.size.height;

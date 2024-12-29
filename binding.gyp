@@ -27,6 +27,8 @@
       "sources": [
         "./src/index.cpp",
         "./src/utils.cpp",
+        "./src/hash.cpp",
+        "./src/display_config_helper.cpp"
       ],
       "include_dirs": [
         "<!@(node -p \"require('node-addon-api').include\")"

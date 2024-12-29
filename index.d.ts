@@ -8,6 +8,7 @@ declare module 'lumi-control' {
 
     export interface Monitor {
         id: string;
+        displayId: string;
         name: string;
         manufacturer: string;
         serialNumber: string;
