@@ -83,7 +83,8 @@ Sets the brightness levels for different monitors.
 
 ### `lumi.set(monitorId: string | ALL_MONITORS, brightness: number)`
 
-Attempts to set the brightness level of a specific monitor by id or, if provided the `GLOBAL` constant, the global brightness level.
+Attempts to set the brightness level of a specific monitor by id or, if provided the `GLOBAL` constant, the global
+brightness level.
 
 - monitorId: The ID of the monitor to set the brightness level for.
 - brightness: The brightness level to set.
@@ -107,6 +108,7 @@ An object that maps monitor IDs to brightness levels.
 Represents a monitor.
 
 - **id**: The unique ID of the monitor.
+- **displayId**: A secondary identifier for the monitor. (Matches Chromium and Electron's display identifier.)
 - **name**: The name of the monitor.
 - **manufacturer**: The manufacturer of the monitor.
 - **serialNumber**: The serial number of the monitor.

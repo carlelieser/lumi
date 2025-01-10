@@ -138,4 +138,24 @@ void LogToConsole(const Napi::Env env, const std::string &message) {
 	log.Call(console, {Napi::String::New(env, message)});
 }
 
+std::string StringPrintf(const char* format, ...) {
+	char buffer[1024];
+	va_list args;
+	va_start(args, format);
+	vsnprintf(buffer, sizeof(buffer), format, args);
+	va_end(args);
+	return std::string(buffer);
+}
+
+std::string WideToUTF8(const std::wstring& wide_str) {
+	if (wide_str.empty()) return std::string();
+	int size_needed = WideCharToMultiByte(CP_UTF8, 0, wide_str.c_str(), (int)wide_str.size(), nullptr, 0, nullptr, nullptr);
+	std::string utf8_str(size_needed, 0);
+	WideCharToMultiByte(CP_UTF8, 0, wide_str.c_str(), (int)wide_str.size(), &utf8_str[0], size_needed, nullptr, nullptr);
+	return utf8_str;
+}
+
+std::wstring FixedArrayToStringView(const wchar_t* array) {
+	return std::wstring(array);
+}
 

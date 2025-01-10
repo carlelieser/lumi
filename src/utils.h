@@ -21,4 +21,8 @@ bool Every(const std::vector<bool> vector);
 int CountOccurrence(const std::vector<std::string> vector, const std::string target);
 void LogToConsole(const Napi::Env env, const std::string &message);
 
-#endif// UTILS_H
+std::string StringPrintf(const char* format, ...);
+std::string WideToUTF8(const std::wstring& wide_str);
+std::wstring FixedArrayToStringView(const wchar_t* array);
+
+#endif // UTILS_H

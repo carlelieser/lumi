@@ -3,6 +3,7 @@
 #include "workers/get_brightness.h"
 #include "workers/set_brightness.h"
 #include <napi.h>
+#include <sstream>
 
 Napi::Promise SetBrightness(const Napi::CallbackInfo &info) {
 	Napi::Env env = info.Env();
@@ -72,6 +73,7 @@ Napi::Value GetMonitors(const Napi::CallbackInfo &info) {
 		Napi::Object size = Napi::Object::New(env);
 		Napi::Object position = Napi::Object::New(env);
 		result.Set(Napi::String::New(env, "id"), monitor.id);
+		result.Set(Napi::String::New(env, "displayId"), ToNapiString(env, std::to_string(monitor.displayId)));
 		result.Set(Napi::String::New(env, "name"), ToNapiString(env, monitor.name));
 		result.Set(Napi::String::New(env, "manufacturer"), ToNapiString(env, monitor.manufacturer));
 		result.Set(Napi::String::New(env, "serialNumber"), ToNapiString(env, monitor.serialNumber));
