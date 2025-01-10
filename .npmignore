@@ -1,2 +1,5 @@
 .clang-format
 .idea
+
+src/
+test/
